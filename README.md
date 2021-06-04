@@ -4,7 +4,7 @@
 
 This is an example of a very simplified insurance sales system made in a microservice architecture using:
 
-* .NET Core 2.1
+* .NET 5
 * Entity Framework Core
 * MediatR
 * Marten
@@ -22,18 +22,19 @@ This is an example of a very simplified insurance sales system made in a microse
 
 **Comprehensive guide describing exactly the architecture, applied design patterns and technologies can be found on our blog:**
 
-- [Part 1 The Plan](https://altkomsoftware.pl/en/blog/building-microservices-on-net-core-1/)
-- [Part 2 Shaping microservice internal architecture with CQRS and MediatR](https://altkomsoftware.pl/en/blog/microservices-net-core-cqrs-mediatr/)
-- [Part 3 Service Discovery with Eureka](https://altkomsoftware.pl/en/blog/service-discovery-eureka/)
-- [Part 4 Building API Gateways With Ocelot](https://altkomsoftware.pl/en/blog/building-api-gateways-with-ocelot/)
-- [Part 5 Marten An Ideal Repository For Your Domain Aggregates](https://altkomsoftware.pl/en/blog/building-microservices-domain-aggregates/)
-- [Part 6 Real time server client communication with SignalR and RabbitMQ](https://altkomsoftware.pl/en/blog/building-microservices-6/)
-- [Part 7 Transactional Outbox with RabbitMQ](https://altkomsoftware.pl/en/blog/microservices-outbox-rabbitmq/)
+* [Part 1 The Plan](https://altkomsoftware.pl/en/blog/building-microservices-net-core-part-1-plan/)
+* [Part 2 Shaping microservice internal architecture with CQRS and MediatR](https://altkomsoftware.pl/en/blog/microservices-net-core-cqrs-mediatr/)
+* [Part 3 Service Discovery with Eureka](https://altkomsoftware.pl/en/blog/service-discovery-eureka/)
+* [Part 4 Building API Gateways With Ocelot](https://altkomsoftware.pl/en/blog/building-api-gateways-with-ocelot/)
+* [Part 5 Marten An Ideal Repository For Your Domain Aggregates](https://altkomsoftware.pl/blog/building-microservices-net-core-part-5-marten-ideal-repository-domain-aggregates//)
+* [Part 6 Real time server client communication with SignalR and RabbitMQ](https://altkomsoftware.pl/en/blog/building-microservices-6/)
+* [Part 7 Transactional Outbox with RabbitMQ](https://altkomsoftware.pl/en/blog/microservices-outbox-rabbitmq/)
 
 Other articles around microservices that could be interesting:
-- [CQRS and Event Sourcing Intro For Developers](https://altkomsoftware.pl/en/blog/cqrs-event-sourcing/)
-- [From monolith to microservices – to migrate or not to migrate?](https://altkomsoftware.pl/en/blog/monolith-microservices/)
-- [Event Storming — innovation in IT projects](https://altkomsoftware.pl/en/blog/event-storming/)
+
+* [CQRS and Event Sourcing Intro For Developers](https://altkomsoftware.pl/en/blog/cqrs-event-sourcing/)
+* [From monolith to microservices – to migrate or not to migrate?](https://altkomsoftware.pl/en/blog/monolith-microservices/)
+* [Event Storming — innovation in IT projects](https://altkomsoftware.pl/en/blog/event-storming/)
 
 ## Business Case
 
@@ -41,7 +42,8 @@ We are going to build very simplified system for insurance agents to sell variou
 Insurance agents will have to log in and system will present them with list of products they can sell. Agents will be able to view products and find a product appropriate for their customers. Then they can create an offer and system will calculate a price based on provided parameters. \
 Finally agent will be able to confirm the sale by converting offer to policy and printing pdf certificate. \
 Portal will also give them ability to search and view offer and policies. \
-Portal will also have some basic social network features like chat for agents.
+Portal will also have some basic social network features like chat for agents. \
+Latest feature is a business dashboard that displays sales stats using ElasticSearch Aggregations and ChartJS.
 
 ## Architecture overview
 
@@ -74,11 +76,27 @@ It provides basic information about each insurance product and its parameters th
 
 * **Document Service** - this service uses JS Report to generate pdf certificates.
 
+* **Dashboard Service** - Dashboard that presents sales statistics. \
+Business dashboards that presents our agents sales results. Dashboard service subscribes to events of selling policies and index sales data in ElasticSearch. Then ElasticSearch aggregation framework is used to calculate sales stats like: total sales and number of policies per product per time period, sales per agent in given time period and sales timeline. Sales stats are nicely visualized using ChartJS.
+
 Each business microservice has also **.Api project** (`PaymentService.Api`, `PolicyService.Api` etc.), where we defined commands, events, queries and operations and **.Test project** (`PaymentService.Test`, `PolicyService.Test`) with unit and integration tests.
 
 ## Running with Docker
 
-Check branch [docker-compose](https://github.com/asc-lab/dotnetcore-microservices-poc/tree/docker-compose). On this branch you can find version that you can run with one command using Docker and Docker Compose.
+You must install Docker & Docker Compose before. \
+Scripts have been divided into two parts:
+
+* [`infra.yml`](scripts/infra.yml) runs the necessary infrastructure.
+* [`app.yml`](scripts/app.yml) is used to run the application.
+
+You can use scripts to build/run/stop/down all containers.
+
+To run the whole solution:
+
+```bash
+./infra-run.sh
+./app-run.sh
+```
 
 ## Manual running
 
@@ -90,21 +108,19 @@ Install [RabbitMQ](https://www.rabbitmq.com/).
 
 Install [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html) version >= 6.
 
-Install [Maven](https://maven.apache.org/download.cgi) in order to run Eureka or use Maven wrapper.
-
 ### Init databases
 
 #### Windows
 
 ```bash
-cd DbScripts
+cd postgres
 "PATH_TO_PSQL.EXE" --host "localhost" --port EXAMPLE_PORT --username "EXAMPLE_USER" --file "createdatabases.sql"
 ```
 
 In my case this command looks like:
 
 ```bash
-cd DbScripts
+cd postgres
 "C:\Program Files\PostgreSQL\9.6\bin\psql.exe" --host "localhost" --port 5432 --username "postgres" --file "createdatabases.sql"
 ```
 
@@ -123,8 +139,8 @@ Service registry and discovery tool for our project is Eureka. It is included in
 In order to start it open terminal / command prompt.
 
 ```bash
-cd eureka
-mvn spring-boot:run
+cd eureka-server
+./gradlew.[bat] bootRun
 ```
 
 This should start Eureka and you should be able to go to http://localhost:8761/ and see Eureka management panel.
@@ -141,6 +157,7 @@ build-without-tests.bat
 ```
 
 #### Linux
+
 ```bash
 cd scripts
 ./build-without-tests.sh
@@ -162,6 +179,6 @@ cd scripts
 ./build.sh
 ```
 
-## Run
+## Run specific service
 
 Go to folder with specific service (`PolicyService`, `ProductService` etc) and use `dotnet run` command.
